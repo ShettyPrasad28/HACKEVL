@@ -128,3 +128,48 @@ export PATH="$PATH:`pwd`/flutter/bin"
 
 # Check installation
 flutter doctor
+
+---
+
+## 🚀 Flutter Useful Commands
+
+```bash
+# Check Flutter version and environment setup
+flutter doctor
+
+# Get all dependencies listed in pubspec.yaml
+flutter pub get
+
+# Run the app on a connected device or emulator
+flutter run
+
+# Run with specific device
+flutter run -d <device_id>
+
+# Show all connected devices
+flutter devices
+
+# Hot reload (after making code changes while running the app)
+r
+
+# Hot restart (full app restart in debug mode)
+R
+
+# Run unit/widget tests
+flutter test
+
+# Analyze project for errors & suggestions
+flutter analyze
+
+# Build a release APK (Android)
+flutter build apk --release
+
+# Build an App Bundle for Play Store
+flutter build appbundle --release
+
+# Build for iOS (requires macOS & Xcode)
+flutter build ios --release
+
+# Clean project (useful if build issues occur)
+flutter clean
+
