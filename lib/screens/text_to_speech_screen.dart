@@ -12,56 +12,120 @@ class TextToSpeechScreen extends StatefulWidget {
 }
 
 class _TextToSpeechScreenState extends State<TextToSpeechScreen> {
-  final _tts = TtsService();
-  final _ocr = OcrService();
-  final _ctrl = TextEditingController();
+  final TtsService _tts = TtsService();
+  final OcrService _ocr = OcrService();
+  final TextEditingController _ctrl = TextEditingController();
+
   File? _pickedImage;
+  bool _isSpeaking = false;
+
+  int _tapCounter = 0;
+  DateTime? _lastTapTime;
+
+  DateTime? _lastButtonTapTime;
+  int _buttonTapCounter = 0;
 
   @override
   void initState() {
     super.initState();
-    // Speak welcome instructions
     _tts.speak(
-      "Text to Speech. You can capture a photo, pick from gallery, "
-      "or type text manually. Use the buttons below to get started."
+      "Welcome to Text to Speech. Capture a photo or pick from gallery. "
+      "Text will be extracted and spoken automatically. "
+      "Triple tap anywhere to pause or resume speech."
     );
   }
 
-  /// Pick from gallery
-  Future<void> _pickImage() async {
-    final picker = ImagePicker();
-    final picked = await picker.pickImage(source: ImageSource.gallery);
-    if (picked != null) {
-      await _processImage(File(picked.path));
-      _tts.speak("Image selected from gallery. Extracting text.");
-    } else {
-      _tts.speak("No image selected.");
-    }
-  }
-
-  /// Capture from camera
   Future<void> _captureImage() async {
     final picker = ImagePicker();
     final captured = await picker.pickImage(source: ImageSource.camera);
     if (captured != null) {
+      _tts.speak("Camera opened");
       await _processImage(File(captured.path));
-      _tts.speak("Image captured. Extracting text.");
     } else {
       _tts.speak("No image captured.");
     }
   }
 
-  /// Shared method → OCR + Update text + Speak
+  Future<void> _pickImage() async {
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(source: ImageSource.gallery);
+    if (picked != null) {
+      _tts.speak("Gallery opened");
+      await _processImage(File(picked.path));
+    } else {
+      _tts.speak("No image selected.");
+    }
+  }
+
   Future<void> _processImage(File file) async {
     setState(() => _pickedImage = file);
-    final extracted = await _ocr.extractText(file);
+    String extracted = await _ocr.extractText(file);
 
     setState(() => _ctrl.text = extracted.isNotEmpty ? extracted : "No text found in image.");
 
     if (extracted.isNotEmpty) {
-      await _tts.speak("Text detected. Reading now. $extracted");
+      await _speakExtractedText(extracted);
     } else {
       await _tts.speak("No text found in the image.");
+    }
+  }
+
+  Future<void> _speakExtractedText(String text) async {
+    if (text.trim().isEmpty) return;
+    setState(() => _isSpeaking = true);
+    try {
+      await _tts.speak(text);
+    } finally {
+      if (mounted) setState(() => _isSpeaking = false);
+    }
+  }
+
+  Future<void> _toggleSpeaking() async {
+    if (_isSpeaking) {
+      _tts.stop();
+      setState(() => _isSpeaking = false);
+      await _tts.speak("Paused");
+    } else {
+      final text = _ctrl.text.trim();
+      if (text.isNotEmpty) {
+        await _speakExtractedText(text);
+      } else {
+        await _tts.speak("No text to read.");
+      }
+    }
+  }
+
+  void _handleTap() {
+    final now = DateTime.now();
+    if (_lastTapTime == null || now.difference(_lastTapTime!) > const Duration(milliseconds: 600)) {
+      _tapCounter = 1;
+    } else {
+      _tapCounter++;
+    }
+    _lastTapTime = now;
+
+    if (_tapCounter >= 3) {
+      _toggleSpeaking();
+      _tapCounter = 0;
+      _lastTapTime = null;
+    }
+  }
+
+  void _handleButtonTap(Future<void> Function() action, String name) {
+    final now = DateTime.now();
+    if (_lastButtonTapTime == null || now.difference(_lastButtonTapTime!) > const Duration(milliseconds: 500)) {
+      _buttonTapCounter = 1;
+    } else {
+      _buttonTapCounter++;
+    }
+    _lastButtonTapTime = now;
+
+    if (_buttonTapCounter == 1) {
+      _tts.speak("$name option selected");
+    } else if (_buttonTapCounter == 2) {
+      action();
+      _buttonTapCounter = 0;
+      _lastButtonTapTime = null;
     }
   }
 
@@ -76,121 +140,160 @@ class _TextToSpeechScreenState extends State<TextToSpeechScreen> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return Scaffold(
-      appBar: AppBar(title: const Text('Text to Speech')),
-      body: ListView(
-        padding: const EdgeInsets.all(20),
-        children: [
-          Text(
-            'Type, capture, or upload a picture to extract text and hear it.',
-            style: TextStyle(color: Colors.black.withOpacity(.7)),
-          ),
-          const SizedBox(height: 12),
 
-          // ✅ Buttons: Camera + Gallery
-          Row(
-            children: [
-              Expanded(
-                child: FilledButton.icon(
-                  onPressed: _captureImage,
-                  icon: const Icon(Icons.camera_alt),
-                  label: const Text("Capture"),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: FilledButton.icon(
-                  onPressed: _pickImage,
-                  icon: const Icon(Icons.image),
-                  label: const Text("Gallery"),
-                ),
-              ),
-            ],
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: _handleTap,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text(
+            'Text to Speech',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 24),
           ),
+          centerTitle: true,
+          backgroundColor: cs.primary,
+          foregroundColor: Colors.white,
+          elevation: 2,
+        ),
+        body: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              children: [
+                const SizedBox(height: 16),
 
-          if (_pickedImage != null) ...[
-            const SizedBox(height: 12),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: Image.file(_pickedImage!, height: 180, fit: BoxFit.cover),
+                // Updated heading to match the screenshot style
+                Container(
+                  padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    color: Colors.white,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Center(
+                    child: Text(
+                      'Text to Speech',
+                      style: TextStyle(
+                        fontSize: 32,
+                        fontWeight: FontWeight.w700,
+                        color: cs.primary,
+                        letterSpacing: 1.0,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 30),
+
+                // Camera button
+                SizedBox(
+                  width: double.infinity,
+                  height: 130,
+                  child: ElevatedButton.icon(
+                    onPressed: () => _handleButtonTap(_captureImage, "Camera"),
+                    icon: Icon(Icons.camera_alt, size: 60, color: cs.onPrimary),
+                    label: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 28.0),
+                      child: Text(
+                        'Camera',
+                        style: TextStyle(fontSize: 34, fontWeight: FontWeight.bold, color: cs.onPrimary),
+                      ),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+                      backgroundColor: cs.primary.withOpacity(0.85),
+                      elevation: 8,
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 28),
+
+                // Gallery button
+                SizedBox(
+                  width: double.infinity,
+                  height: 130,
+                  child: ElevatedButton.icon(
+                    onPressed: () => _handleButtonTap(_pickImage, "Gallery"),
+                    icon: Icon(Icons.photo_library, size: 60, color: cs.onSecondary),
+                    label: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 28.0),
+                      child: Text(
+                        'Gallery',
+                        style: TextStyle(fontSize: 34, fontWeight: FontWeight.bold, color: cs.onSecondary),
+                      ),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+                      backgroundColor: cs.secondary.withOpacity(0.85),
+                      elevation: 8,
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 30),
+
+                // Extracted text area
+                Expanded(
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade50,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.black26, width: 1.5),
+                    ),
+                    child: SingleChildScrollView(
+                      child: TextField(
+                        controller: _ctrl,
+                        readOnly: true,
+                        maxLines: null,
+                        style: const TextStyle(fontSize: 18, height: 1.4),
+                        decoration: const InputDecoration.collapsed(
+                          hintText: 'Extracted text will appear here...',
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 12),
+
+                // Status row
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Triple-tap anywhere to pause/resume',
+                      style: TextStyle(color: cs.onBackground.withOpacity(.7)),
+                    ),
+                    Row(
+                      children: [
+                        Icon(
+                          _isSpeaking ? Icons.volume_up_rounded : Icons.volume_off_rounded,
+                          color: _isSpeaking ? cs.primary : Colors.grey,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          _isSpeaking ? 'Speaking' : 'Idle',
+                          style: TextStyle(
+                            color: _isSpeaking ? cs.primary : Colors.grey,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ],
             ),
-          ],
-          const SizedBox(height: 12),
-
-          //  Text Field (Auto-filled by OCR)
-          TextField(
-            controller: _ctrl,
-            minLines: 5,
-            maxLines: 10,
-            decoration: const InputDecoration(
-              hintText: 'Enter text or OCR result...',
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.all(Radius.circular(16)),
-              ),
-            ),
           ),
-
-          const SizedBox(height: 16),
-
-          // Sliders
-          Row(
-            children: [
-              Expanded(
-                child: Slider(
-                  value: _tts.rate,
-                  onChanged: (v) => setState(() => _tts.update(rate: v)),
-                  min: 0.2, max: 1.0,
-                ),
-              ),
-              Text('Speed', style: TextStyle(color: cs.primary, fontWeight: FontWeight.w700)),
-            ],
-          ),
-          Row(
-            children: [
-              Expanded(
-                child: Slider(
-                  value: _tts.pitch,
-                  onChanged: (v) => setState(() => _tts.update(pitch: v)),
-                  min: 0.5, max: 2.0,
-                ),
-              ),
-              Text('Pitch', style: TextStyle(color: cs.primary, fontWeight: FontWeight.w700)),
-            ],
-          ),
-          Row(
-            children: [
-              Expanded(
-                child: Slider(
-                  value: _tts.volume,
-                  onChanged: (v) => setState(() => _tts.update(volume: v)),
-                  min: 0.0, max: 1.0,
-                ),
-              ),
-              Text('Volume', style: TextStyle(color: cs.primary, fontWeight: FontWeight.w700)),
-            ],
-          ),
-
-          const SizedBox(height: 12),
-
-          // Speak + Stop
-          FilledButton.icon(
-            onPressed: () {
-              if (_ctrl.text.trim().isEmpty) {
-                _tts.speak("No text to read. Please type or capture text.");
-              } else {
-                _tts.speak(_ctrl.text);
-              }
-            },
-            icon: const Icon(Icons.play_arrow_rounded),
-            label: const Text('Speak'),
-          ),
-          const SizedBox(height: 8),
-          OutlinedButton.icon(
-            onPressed: _tts.stop,
-            icon: const Icon(Icons.stop_rounded),
-            label: const Text('Stop'),
-          ),
-        ],
+        ),
       ),
     );
   }

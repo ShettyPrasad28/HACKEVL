@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:vision_vox/screens/note_detection_screen.dart';
 import 'package:vision_vox/screens/text_to_speech_screen.dart';
 import 'package:vision_vox/screens/navigation_screen.dart';
+import 'package:vision_vox/screens/object_detection_screen.dart';
 import 'package:vision_vox/services/tts_service.dart';
 import 'package:vision_vox/widgets/feature_card.dart';
 
@@ -18,10 +19,11 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final tts = Provider.of<TtsService>(context, listen: false);
-      tts.speak("Welcome to Vision Vox. You have three options. "
-          "Text to Speech for reading text aloud. "
-          "Note Detection for recognizing Indian currency. "
-          "Or Navigation for real-time obstacle detection.");
+      tts.speak(
+        "Welcome to Vision Vox. You have four options. "
+        "Text to Speech, Note Detection, Navigation, and Object Detection. "
+        "Single tap to hear the feature name, double tap to open."
+      );
     });
   }
 
@@ -33,6 +35,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Vision Vox'),
+        centerTitle: true,
       ),
       body: SafeArea(
         child: Padding(
@@ -41,7 +44,6 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               // Header banner
               Container(
-                // ... (header code is unchanged)
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
@@ -73,63 +75,54 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(height: 22),
 
-              // ✅ CORRECTED ROW: Using a Spacer to push cards apart
-              Row(
-                children: [
-                  Expanded(
-                    flex: 5, // Give it 5 parts of the space
-                    child: FeatureCard(
-                      title: 'Text to Speech',
-                      caption: 'OCR → Voice',
-                      icon: Icons.record_voice_over,
-                      accentBlend: true,
-                      onTapAction: () {
-                        tts.speak("Text to Speech. Reads text aloud.");
-                      },
-                      onDoubleTapAction: () {
-                        tts.speak("Opening Text to Speech");
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const TextToSpeechScreen(),
-                          ),
-                        );
-                      },
+              // Text to Speech
+              FeatureCard(
+                title: 'Text to Speech',
+                caption: 'OCR → Voice',
+                icon: Icons.record_voice_over,
+                accentBlend: true,
+                onTapAction: () {
+                  tts.speak("Text to Speech. Double tap to open this feature.");
+                },
+                onDoubleTapAction: () {
+                  tts.speak("Opening Text to Speech");
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const TextToSpeechScreen(),
                     ),
-                  ),
-                  const Spacer(flex: 1), // This creates the gap in the middle
-                  Expanded(
-                    flex: 5, // Give it 5 parts of the space
-                    child: FeatureCard(
-                      title: 'Note Detection',
-                      caption: 'Currency helper',
-                      icon: Icons.currency_rupee_rounded,
-                      onTapAction: () {
-                        tts.speak("Note Detection. Recognizes Indian currency.");
-                      },
-                      onDoubleTapAction: () {
-                        tts.speak("Opening Note Detection");
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const NoteDetectionScreen(),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ],
+                  );
+                },
               ),
               const SizedBox(height: 16),
 
-              // Full width Navigation card (this remains the same)
+              // Note Detection
+              FeatureCard(
+                title: 'Note Detection',
+                caption: 'Currency helper',
+                icon: Icons.currency_rupee_rounded,
+                onTapAction: () {
+                  tts.speak("Note Detection. Double tap to open this feature.");
+                },
+                onDoubleTapAction: () {
+                  tts.speak("Opening Note Detection");
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const NoteDetectionScreen(),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 16),
+
+              // Navigation
               FeatureCard(
                 title: 'Navigation',
                 caption: 'Real-time obstacle alerts',
                 icon: Icons.explore_rounded,
                 onTapAction: () {
-                  tts.speak(
-                      "Navigation. Get real-time obstacle alerts to navigate your surroundings.");
+                  tts.speak("Navigation. Double tap to open this feature.");
                 },
                 onDoubleTapAction: () {
                   tts.speak("Opening Navigation");
@@ -141,6 +134,27 @@ class _HomeScreenState extends State<HomeScreen> {
                   );
                 },
               ),
+              const SizedBox(height: 16),
+            // Object Detection
+            FeatureCard(
+              title: 'Object Detection',
+              caption: 'Identify surrounding objects',
+              icon: Icons.camera_alt, // changed from camera_search_rounded
+              accentBlend: true,
+              onTapAction: () {
+                tts.speak("Object Detection. Double tap to open this feature.");
+              },
+              onDoubleTapAction: () {
+                tts.speak("Opening Object Detection");
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const ObjectDetectionScreen(),
+                  ),
+                );
+              },
+            ),
+
             ],
           ),
         ),
