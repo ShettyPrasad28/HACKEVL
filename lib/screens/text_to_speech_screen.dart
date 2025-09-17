@@ -22,9 +22,6 @@ class _TextToSpeechScreenState extends State<TextToSpeechScreen> {
   int _tapCounter = 0;
   DateTime? _lastTapTime;
 
-  DateTime? _lastButtonTapTime;
-  int _buttonTapCounter = 0;
-
   @override
   void initState() {
     super.initState();
@@ -111,24 +108,6 @@ class _TextToSpeechScreenState extends State<TextToSpeechScreen> {
     }
   }
 
-  void _handleButtonTap(Future<void> Function() action, String name) {
-    final now = DateTime.now();
-    if (_lastButtonTapTime == null || now.difference(_lastButtonTapTime!) > const Duration(milliseconds: 500)) {
-      _buttonTapCounter = 1;
-    } else {
-      _buttonTapCounter++;
-    }
-    _lastButtonTapTime = now;
-
-    if (_buttonTapCounter == 1) {
-      _tts.speak("$name option selected");
-    } else if (_buttonTapCounter == 2) {
-      action();
-      _buttonTapCounter = 0;
-      _lastButtonTapTime = null;
-    }
-  }
-
   @override
   void dispose() {
     _tts.stop();
@@ -148,12 +127,15 @@ class _TextToSpeechScreenState extends State<TextToSpeechScreen> {
         appBar: AppBar(
           title: const Text(
             'Text to Speech',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 24),
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 22,
+            ),
           ),
           centerTitle: true,
-          backgroundColor: cs.primary,
-          foregroundColor: Colors.white,
-          elevation: 2,
+          backgroundColor: Colors.white,
+          foregroundColor: Colors.blueAccent,
+          elevation: 0,
         ),
         body: SafeArea(
           child: Padding(
@@ -162,81 +144,37 @@ class _TextToSpeechScreenState extends State<TextToSpeechScreen> {
               children: [
                 const SizedBox(height: 16),
 
-                // Updated heading to match the screenshot style
-                Container(
-                  padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                    color: Colors.white,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Center(
-                    child: Text(
-                      'Text to Speech',
-                      style: TextStyle(
-                        fontSize: 32,
-                        fontWeight: FontWeight.w700,
-                        color: cs.primary,
-                        letterSpacing: 1.0,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 30),
-
                 // Camera button
                 SizedBox(
                   width: double.infinity,
-                  height: 130,
+                  height: 120,
                   child: ElevatedButton.icon(
-                    onPressed: () => _handleButtonTap(_captureImage, "Camera"),
-                    icon: Icon(Icons.camera_alt, size: 60, color: cs.onPrimary),
-                    label: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 28.0),
-                      child: Text(
-                        'Camera',
-                        style: TextStyle(fontSize: 34, fontWeight: FontWeight.bold, color: cs.onPrimary),
-                      ),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-                      backgroundColor: cs.primary.withOpacity(0.85),
-                      elevation: 8,
+                    onPressed: _captureImage,
+                    icon: const Icon(Icons.camera_alt, size: 50),
+                    label: const Text(
+                      'Camera',
+                      style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
                     ),
                   ),
                 ),
 
-                const SizedBox(height: 28),
+                const SizedBox(height: 20),
 
                 // Gallery button
                 SizedBox(
                   width: double.infinity,
-                  height: 130,
+                  height: 120,
                   child: ElevatedButton.icon(
-                    onPressed: () => _handleButtonTap(_pickImage, "Gallery"),
-                    icon: Icon(Icons.photo_library, size: 60, color: cs.onSecondary),
-                    label: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 28.0),
-                      child: Text(
-                        'Gallery',
-                        style: TextStyle(fontSize: 34, fontWeight: FontWeight.bold, color: cs.onSecondary),
-                      ),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-                      backgroundColor: cs.secondary.withOpacity(0.85),
-                      elevation: 8,
+                    onPressed: _pickImage,
+                    icon: const Icon(Icons.photo_library, size: 50),
+                    label: const Text(
+                      'Gallery',
+                      style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
                     ),
                   ),
                 ),
 
-                const SizedBox(height: 30),
+                const SizedBox(height: 20),
 
                 // Extracted text area
                 Expanded(
@@ -269,7 +207,7 @@ class _TextToSpeechScreenState extends State<TextToSpeechScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'Triple-tap anywhere to pause/resume',
+                      'Triple-tap to pause/resume',
                       style: TextStyle(color: cs.onBackground.withOpacity(.7)),
                     ),
                     Row(
